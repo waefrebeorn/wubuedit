@@ -1,0 +1,14 @@
+# Waefrebeorn Umbrella License v3.0
+
+All Waefrebeorn work — including this video content — is licensed under the
+Waefrebeorn Umbrella License v3.0. See the full license text at:
+
+  https://github.com/waefrebeorn/waefrebeorn-umbrella-license
+
+**Populace** (individuals, non-profits, governments, small businesses):
+Full freedom to use, modify, distribute, sell, and integrate — no restrictions.
+
+**Corporations**: Must provide attribution and comply with Corporate Obligations
+at scale (§4). See LICENSE-Umbrella.txt in the parent repository for full text.
+
+SPDX-Identifier: Waefrebeorn-Umbrella-3.0

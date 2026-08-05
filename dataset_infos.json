@@ -1,0 +1,138 @@
+{
+  "builder_id": null,
+  "byte_size": null,
+  "config_names": [
+    "default"
+  ],
+  "dataset_size": null,
+  "dataset_infos": {
+    "default": {
+      "description": "WuBuWizard Cleveland Video Dataset — all video media, audio, and supporting files for the WuBuWizard film project. Combination licensed: Waefrebeorn Umbrella License v3.0 + CC-BY-4.0 for parody/transformative elements. All original work is Waefrebeorn; parody elements claimed as fair use.",
+      "features": {
+        "video": {
+          "feature": {
+            "video": {}
+          },
+          "is_video": true
+        },
+        "audio": {
+          "feature": {
+            "audio": {}
+          },
+          "is_audio": true
+        },
+        "track_id": {
+          "dtype": "string",
+          "feature": {
+            "_type": "Value", "dtype": "string"
+          }
+        },
+        "clip_id": {
+          "dtype": "string",
+          "feature": {
+            "_type": "Value", "dtype": "string"
+          }
+        },
+        "shot_type": {
+          "dtype": "string",
+          "feature": {
+            "_type": "Value", "dtype": "string"
+          }
+        },
+        "duration": {
+          "dtype": "float32",
+          "feature": {
+            "_type": "Value", "dtype": "float32"
+          }
+        },
+        "width": {
+          "dtype": "int32",
+          "feature": {
+            "_type": "Value", "dtype": "int32"
+          }
+        },
+        "height": {
+          "dtype": "int32",
+          "feature": {
+            "_type": "Value", "dtype": "int32"
+          }
+        },
+        "license": {
+          "dtype": "string",
+          "feature": {
+            "_type": "Value", "dtype": "string"
+          }
+        },
+        "parody_basis": {
+          "dtype": "string",
+          "feature": {
+            "_type": "Value", "dtype": "string"
+          }
+        }
+      },
+      "homepage": "https://github.com/waefrebeorn/wubuwizard",
+      "license": "cc-by-4.0",
+      "name": "wubuwizard-cleveland-video",
+      "splits": {
+        "train": {
+          "name": "train",
+          "num_bytes": null,
+          "num_examples": null
+        }
+      },
+      "supervised_keys": null,
+      "task_templates": [
+        {
+          "task": "video-text-to-video",
+          "task_id": "video-text-to-video",
+          "task_name": "Video Text-to-Video"
+        }
+      ],
+      "unsupported_indices": null,
+      "url": "https://github.com/waefrebeorn/wubuwizard"
+    }
+  },
+  "dataset_infos_dir": null,
+  "default_config_name": "default",
+  "description": "WuBuWizard Cleveland Video Dataset (Parody) — combination licensed under Waefrebeorn Umbrella License v3.0 and CC-BY-4.0 for parody/fair use elements.",
+  "featured_in": null,
+  "id": "wubuwizard-cleveland-video",
+  "indices": null,
+  "language": [
+    "en"
+  ],
+  "languages": [
+    "en"
+  ],
+  "last_modified": null,
+  "latest_checksum": null,
+  "license": "cc-by-4.0",
+  "licenses": [
+    {
+      "name": "cc-by-4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    }
+  ],
+  "non_supervised_keys": null,
+  "num_splits": 1,
+  "num_tables": null,
+  "pretty_name": "WuBuWizard Cleveland Video Dataset (Parody)",
+  "promoted_modules": null,
+  "sha": null,
+  "size_in_bytes": null,
+  "sizes": null,
+  "sorted_ngrams": null,
+  "tags": [
+    "video-generation",
+    "music-video",
+    "parody",
+    "comedy",
+    "wubuwizard",
+    "waefrebeorn",
+    "ai-training",
+    "video-editing"
+  ],
+  "timezone": null,
+  "url": "https://github.com/waefrebeorn/wubuwizard",
+  "uses_elasticsearch": false
+}

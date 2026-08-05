@@ -1,0 +1,60 @@
+# Waefrebeorn WuBuWizard Parody License
+
+This work uses a **combination license** for parody and transformative content:
+
+## 1. Primary License: Waefrebeorn Umbrella License v3.0
+
+All original Waefrebeorn creative work (code, scripts, original footage,
+original sound design, original artwork) is licensed under the Waefrebeorn
+Umbrella License v3.0. See LICENSE for the full text.
+
+- SPDX-Identifier: Waefrebeorn-Umbrella-3.0
+- URL: https://github.com/waefrebeorn/waefrebeorn-umbrella-license
+
+## 2. Secondary License: Creative Commons Attribution 4.0 International
+
+Transformative parody elements that incorporate or derive from third-party
+copyrighted source material are licensed under CC BY 4.0, to the extent
+permitted by parody/fair use doctrine. This ensures compatibility with
+Hugging Face dataset hosting and enables research/commercial reuse of
+the transformative elements.
+
+You must give appropriate credit, provide a link to the license, and
+indicate if changes were made. You may do so in any reasonable manner,
+but not in any way that suggests the licensor endorses you or your use.
+
+- SPDX-Identifier: CC-BY-4.0
+- URL: https://creativecommons.org/licenses/by/4.0/
+
+## 3. Legal Basis: Parody / Fair Use
+
+This dataset contains parody works that transform original copyrighted
+material for comedic and social commentary purposes. Such use is claimed
+as fair use under:
+
+- 17 U.S.C. § 107 (Fair Use Doctrine)
+- Section 107(c) of the U.S. Copyright Act (parody as fair use)
+- Equivalent fair dealing provisions in other jurisdictions
+
+The parody nature of this work means:
+- The original material is used for transformative commentary, not mere copying
+- Only the amount necessary to "conjure up" the original for parody is used
+- The parody does not harm the market for the original work
+- Source attribution is provided where known
+
+## 4. Commercial Use
+
+- **Populace entities:** Full freedom to use, modify, distribute, sell
+- **Corporations:** Must comply with attribution (Obligation A, §4 of Umbrella License)
+  and corporate obligations at scale
+- **Prohibited:** Use in surveillance, censorship, autonomous weapons, fraud
+
+## 5. Attribution
+
+When using this dataset, please attribute:
+
+```
+Waefrebeorn. "WuBuWizard Cleveland Video Dataset (Parody)." 2026.
+Licensed under: Waefrebeorn Umbrella License v3.0 + CC-BY-4.0 + parody/fair use.
+https://github.com/waefrebeorn/waefrebeorn-umbrella-license
+```

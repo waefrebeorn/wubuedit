@@ -1,0 +1,9 @@
+// Native-only build guard verification test.
+// This document is NOT compiled — it's a manual verification procedure.
+//
+// Run: ELECTRON=1 cmake -B /tmp/wubuedit-test-build
+// Expected: FATAL_ERROR "wubuedit is native-only: ELECTRON is not allowed."
+// Exit code: non-zero
+//
+// This turns "we don't use Electron" from a design principle into a
+// hard CMake configuration error, per the slerm-reimplementation SOP.

@@ -1,0 +1,15 @@
+build/
+*.o
+*.so
+*.a
+*.exe
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.wav
+*.ogg
+*.mp3
+__pycache__/
+*.pyc
+.DS_Store

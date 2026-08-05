@@ -1,0 +1,182 @@
+# Waefrebeorn Umbrella License v3.0 — Master License for All Waefrebeorn Work
+
+The populace is free. The corporation is an entity of money. We scale by definition to allow small businesses, governments, non-profits, and educational entities to use freely and stop being taken advantage of by mega-corporations.
+
+This license applies to ALL Waefrebeorn Work across ALL media, repos, and platforms. It is broad, agnostic, and designed to maximize freedom for the general population while ensuring that governments, entities, and large commercial actors integrate responsibly.
+
+We disassociate ourselves from malicious compliance and misuse. We cannot control what every user does with our creations, because we are software creators, not moral policemen. But we retain the right to deny our endorsement, cooperation, and assistance to those who use our work for non-moral and non-allowable activities. That is not a license restriction — it is a dispensation: we choose not to be responsible for what we cannot control.
+
+---
+
+## Version
+
+Waefrebeorn Umbrella License — Version 3.0
+Effective: July 2026
+Licensor: Waefrebeorn entity
+SPDX-Identifier: Waefrebeorn-Umbrella-3.0
+
+This version supersedes v1.0 and v2.0. Works received under an earlier version may continue under that version or be upgraded to v3.0 at the Licensee's option.
+
+---
+
+## 1. Definitions
+
+**1.1 Waefrebeorn Work**
+Any copyrighted work, software, data, media, model weights, documentation, research artifacts, creative works, hardware designs, configurations, scripts, or other output produced or published under the Waefrebeorn name or by any Waefrebeorn-affiliated entity (including the `waefrebeorn` GitHub user, any future organizations or team accounts, and all forks and derivatives thereof).
+
+**1.2 The Populace**
+Individuals, sole proprietors, partnerships, non-profits, educational institutions, government entities (local, regional, national, international), and any entity with fewer than 100 total individuals (employees + independent contractors) AND annual gross revenue below $1,000,000 USD over any preceding 12 months. The Populace is free.
+
+**1.3 Mega Corporation**
+Any single legal entity (or group under common control) with any TWO of: (a) more than 1,000 FTE globally, (b) annual gross revenue exceeding $100,000,000 USD in the prior tax year, (c) listed on a public stock exchange.
+
+**1.4 Corporation**
+Any legal entity that is not a Populace entity and not a Mega Corporation.
+
+**1.5 Affiliate**
+Any entity that controls, is controlled by, or is under common control with the Licensee. "Control" means ownership of substantially all assets or the power to direct management by vote, contract, or otherwise.
+
+**1.6 Shell Entity**
+Any legal entity that has no significant business operations, no substantive employees, exists primarily to hold rights or transact on behalf of another entity, or was created primarily to circumvent the thresholds in this license.
+
+**1.7 Government**
+Any government entity at any level — local, municipal, regional, national, supranational — including public administrations, public agencies, public institutions, public schools, universities, public hospitals, and public research organizations.
+
+**1.8 Derivative Works**
+Any modification, fine-tune, merge, combination, compressed/quantized variant, adapter, LoRA weight, merged model, distilled version, fork, translation, port, adaptation, or new work based on or incorporating Waefrebeorn Work.
+
+**1.9 MaaS (Model as a Service)**
+Providing third-party access to Waefrebeorn Work (or derivatives) where the third party exercises meaningful control over inputs, parameters, fine-tuning data, deployment configuration, or output usage.
+
+**1.10 Prohibited Activities**
+Uses of Waefrebeorn Work that are explicitly non-allowable, including:
+- (a) Real-time mass surveillance systems
+- (b) Censorship, propaganda, or information control tools
+- (c) Autonomous weapons systems or lethal autonomous decision-making
+- (d) Systematic discrimination, harassment, or persecution
+- (e) Fraud, deception, or identity theft
+- (f) Illegal activity as defined by applicable law
+- (g) Use as part of any shell entity scheme to evade this license's terms
+- (h) Use in violation of the license itself (i.e., malicious compliance)
+
+**1.11 Dispensation**
+The Licensor's explicit statement that it does not bear responsibility for uses of Waefrebeorn Work that fall outside the Licensor's control. Dispensation is not a license revocation — it is a refusal of moral association. End users bear full responsibility for their use of Waefrebeorn Work.
+
+---
+
+## 2. The Five Freedoms (Populace Freedom)
+
+### Freedom 0: Use
+The Populace may use Waefrebeorn Work for any purpose — personal, educational, commercial, governmental, non-profit, internal, embedded, research, or otherwise — without restriction and without asking permission.
+
+### Freedom 1: Modify
+The Populace may modify Waefrebeorn Work, including adapting it for specific government workflows, translating it for non-English-speaking populations, integrating it into public sector IT systems, and creating derivatives for any lawful purpose.
+
+### Freedom 2: Distribute
+The Populace may distribute copies of Waefrebeorn Work (and Populace modifications) in source or binary form, across any medium — GitHub, GitLab, npm, PyPI, Hugging Face, Docker Hub, physical media, print, broadcast, web, or any other channel — without restriction.
+
+### Freedom 3: Sell
+The Populace may sell copies of Waefrebeorn Work (including physical copies, digital downloads, SaaS access, model hosting, or any service built on Waefrebeorn Work) and retain all revenue. No royalty, fee, or share is owed to the Licensor.
+
+### Freedom 4: Integrate
+The Populace may integrate Waefrebeorn Work into any system, platform, product, or service — including government procurement systems, public-sector digital infrastructure, educational platforms, non-profit operations, and small business workflows — without additional licensing requirements.
+
+---
+
+## 3. Applicability and Scope
+
+### 3.1 All Projects, All Media, All Repos
+This license applies to ALL Waefrebeorn Work. This includes but is not limited to:
+- All repos under the `waefrebeorn` GitHub user/organization AND any future accounts or sub-organizations
+- All forks, branches, and derived repositories
+- All media: images, audio, video, fonts, clipart, data files, datasets, models
+- All documentation: README files, guides, tutorials, books, papers, specifications
+- All software: source code, binaries, compiled artifacts, scripts, configurations
+- All AI/ML: model weights, parameters, training code, inference code, fine-tunes, merged models
+- All creative works: books, comics, stories, designs, multimedia
+- All sub-projects, sub-repos, and mono-repo subdirectories
+
+### 3.2 Automatic Cover
+This license applies automatically to any work published under the Waefrebeorn name. No additional action is required. New projects inherit this license by default. No project is excluded.
+
+### 3.3 Government Integration
+This license is explicitly designed to facilitate government adoption and integration. Governments are covered as Populace entities. See §7 for details.
+
+---
+
+## 4. The Corporate Obligations
+
+### Obligation A: Attribution
+Any Corporation using Waefrebeorn Work in a commercial product or service must include prominent attribution to the Waefrebeorn project and this license in a publicly accessible location.
+
+### Obligation B: Fair Commercial Terms for MaaS
+Any Corporation operating a MaaS business using Waefrebeorn Work, with aggregate revenue (all sources, all affiliates) exceeding $20,000,000 USD over any consecutive 12 months, must enter into a commercial agreement with the Licensor before using the Waefrebeorn Work for such MaaS purposes.
+
+### Obligation C: Copyleft at Scale
+Any Corporation distributing a Derivative commercially with more than 100 FTE OR annual gross revenue above $1,000,000 USD must make the Derivative available under this same license, with full source, weights, training code, and documentation accessible from a public server. 128-day transition period after crossing the threshold.
+
+### Obligation D: Anti-Circumvention
+Revenue from all Affiliates and Shell Entities is aggregated for purposes of all thresholds in this license. No corporation may split operations to stay under thresholds.
+
+---
+
+## 5. The Anti-Shell-Company and Anti-Fraud Provisions
+
+### 5.1 Shell Entity Definition
+A "Shell Entity" is any legal entity that has no significant business operations, no substantive employees, exists primarily to hold intellectual property, receive payments, or transact on behalf of another entity, or is used primarily to circumvent the Populace exemption or Corporate Obligations.
+
+**Retroactive Void:** If a Licensee is found to be using Shell Entities to game this license's thresholds, the license is retroactively void for that entity and all its Affiliates.
+
+### 5.2 Anti-Fraud Due Diligence
+Licensees must ensure that any entity designated as an "Affiliate" for revenue aggregation is a legitimate operating entity. The Licensor reserves the right to request proof of legitimate operations.
+
+### 5.3 Bad Faith Termination
+This license terminates immediately for any Licensee acting in bad faith, including misrepresenting size or revenue, obfuscating corporate structure, using Waefrebeorn Work as part of a fraud scheme, or any use in connection with money laundering, sanctions evasion, or terrorist financing.
+
+### 5.4 Dispensation Clause (Creator Non-Responsibility)
+The Licensor explicitly disclaims responsibility for the use of Waefrebeorn Work by third parties. The Licensor does not control downstream deployment, integration, or use. This dispensation covers use of models generating harmful outputs, use in ways the Licensor did not intend, use by bad actors, and any other downstream uses the Licensor cannot predict or control.
+
+---
+
+## 6. Prohibited Activities and Non-Association Clause
+
+Waefrebeorn disassociates itself from any use of Waefrebeorn Work in connection with surveillance systems, censorship, autonomous weapons, systematic discrimination, fraud, or any activity that violates applicable law. We do not claim moral authority over downstream use — the license grants freedoms but end users bear full responsibility for their use.
+
+---
+
+## 7. Government and Public Sector Integration Features
+
+Governments, government contractors, public schools, universities, and public research organizations are explicitly covered as Populace entities. They may use, modify, distribute, sell, and integrate Waefrebeorn Work for any public-sector purpose without additional licensing fees or procurement friction. This license is compatible with the EU Interoperable Europe Act (Regulation 2024/903) and the European Commission Open Source Software Strategy.
+
+---
+
+## 8. Patent and IP Protection
+The Licensor grants a patent license for any patent claims necessarily infringed by Waefrebeorn Work. If a Licensee brings patent claims against Waefrebeorn Work or its users, all rights under this license terminate immediately (defensive patent termination).
+
+---
+
+## 9. Warranty Disclaimer and Liability Limitation
+ALL WAFEFREBEORN WORK IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND. IN NO EVENT SHALL THE LICENSOR OR ANY WAFEFREBEORN CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, including model outputs, third-party data, privacy failures, deployment in unapproved contexts, use by bad actors, government or corporate misuse, or any consequential, incidental, or punitive damages.
+
+---
+
+## 10. Governance and Versioning
+This license may be updated over time through a publicly documented governance process. Users may continue under their original version or upgrade to any newer version.
+
+---
+
+## 11. Modifiable License Reserve
+Drawing from academic research ("Modifying OSS Licenses", Gagnon et al., 2024), the Licensor reserves the right to modify this license in extreme cases where Waefrebeorn Work causes demonstrable, widespread, irreversible harm that was not anticipated. Modifications apply only to NEW distributions.
+
+---
+
+## 12. Provenance
+This is v3.0 of the Waefrebeorn Umbrella License, developed in July 2026. The dispensation clause (§5.4) is the formal mechanism for disassociating from malicious users. The modifiable license reserve (§11) provides a research-backed mechanism for responding to emergent harms.
+
+For the complete license text and community standards:
+https://github.com/waefrebeorn/waefrebeorn-umbrella-license
+
+For questions about licensing, commercial use, or compliance:
+Contact: waefrebeorn@waefrebeorn.org
+
+This license is not OSI-approved and not FSF-approved. It is a custom source-available license designed to protect the creator and the community.
