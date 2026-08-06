@@ -1,8 +1,18 @@
 ---
-license: creativeml.openrail++
 license: cc-by-4.0
+language:
+- en
+tags:
+- video-generation
+- music-video
+- parody
+- comedy
+- wubuwizard
+- waefrebeorn
+- ai-training
+- video-editing
+pretty_name: WuBuWizard Cleveland Video Dataset (Parody)
 ---
-# Waefrebeorn WuBuWizard — Cleveland Video Dataset (Parody)
 
 ## Dataset Description
 
@@ -79,18 +89,3 @@ If you use this dataset, please cite:
 
 For licensing questions, commercial use, or compliance:
 waefrebeorn@waefrebeorn.org
-
----
-language:
-- en
-license: cc-by-4.0
-tags:
-- video-generation
-- music-video
-- parody
-- comedy
-- wubuwizard
-- waefrebeorn
-- ai-training
-- video-editing
-pretty_name: WuBuWizard Cleveland Video Dataset (Parody)
