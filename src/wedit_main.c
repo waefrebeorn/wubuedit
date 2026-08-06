@@ -27,6 +27,8 @@
  * FFmpeg/libav provides codec/container plumbing (linked as system library).
  */
 #include "wedit_timeline.h"
+#include "wedit_proxy.h"
+#include "wedit_edl.h"
 #ifdef WEDIT_HAS_FFMPEG
 #include "wedit_demux.h"
 #endif
@@ -45,6 +47,8 @@ static void usage(const char* prog)
         "Commands:\n"
         "  render <output.mp4>        Render the demo timeline to video\n"
         "  info                       Show timeline info\n"
+        "  proxy <source.mp4>         Generate low-res proxy for scrubbing\n"
+        "  edl <output.edl>           Export timeline to CMX 3600 EDL\n"
         "  help                       Show this help\n"
         "\n"
         "The timeline model is pure C11. FFmpeg/libav provides codec muxing.\n"
@@ -155,6 +159,47 @@ int main(int argc, char** argv)
 
         wedit_timeline_destroy(tl);
         return 0;
+    }
+
+    if (strcmp(cmd, "proxy") == 0) {
+        const char* source = argc > 2 ? argv[2] : NULL;
+        if (!source) {
+            fprintf(stderr, "Usage: wubuedit proxy <source.mp4>\n");
+            return 1;
+        }
+        wedit_proxy_opts_t opts;
+        wedit_proxy_default_opts(&opts);
+        char proxy_path[1024];
+        enum wedit_proxy_result result = wedit_proxy_generate(
+            source, proxy_path, sizeof(proxy_path), &opts);
+        if (result == WEDIT_PROXY_OK) {
+            printf("Proxy generated: %s\n", proxy_path);
+            return 0;
+        } else if (result == WEDIT_PROXY_EXISTS) {
+            printf("Proxy already exists: %s\n", proxy_path);
+            return 0;
+        } else {
+            fprintf(stderr, "Failed to generate proxy for %s (code %d)\n",
+                    source, (int)result);
+            return 1;
+        }
+    }
+
+    if (strcmp(cmd, "edl") == 0) {
+        const char* output = argc > 2 ? argv[2] : "timeline.edl";
+        wedit_timeline_t* tl = build_demo_timeline();
+        if (!tl) {
+            fprintf(stderr, "Failed to create timeline\n");
+            return 1;
+        }
+        int ret = wedit_edl_export(tl, output, 0, 1, "Cleveland Demo");
+        if (ret == 0) {
+            printf("EDL exported: %s\n", output);
+        } else {
+            fprintf(stderr, "Failed to export EDL\n");
+        }
+        wedit_timeline_destroy(tl);
+        return ret == 0 ? 0 : 1;
     }
 
     fprintf(stderr, "Unknown command: %s\n", cmd);

@@ -39,6 +39,20 @@ add_library(wedit_effects STATIC
 target_include_directories(wedit_effects PUBLIC src)
 target_link_libraries(wedit_effects PUBLIC wedit_timeline)
 
+# ── Proxy clip generation (pure C11, invokes FFmpeg CLI) ───────
+add_library(wedit_proxy STATIC
+    src/wedit_proxy.c
+)
+target_include_directories(wedit_proxy PUBLIC src)
+target_link_libraries(wedit_proxy PUBLIC wedit_timeline)
+
+# ── EDL export (pure C11, generates CMX 3600 EDL for NLE round-trip) ─
+add_library(wedit_edl STATIC
+    src/wedit_edl.c
+)
+target_include_directories(wedit_edl PUBLIC src)
+target_link_libraries(wedit_edl PUBLIC wedit_timeline)
+
 # ── FFmpeg integration (optional, for demux/decode/encode/mux) ───────────
 # FFmpeg/libav is a SYSTEM LIBRARY we link against, like -lz.
 # It provides codec/container plumbing. Our timeline model is from-scratch C11.
@@ -96,10 +110,10 @@ target_link_libraries(wubuedit PRIVATE wedit_timeline)
 if(WEDIT_AV_FOUND)
     target_link_libraries(wubuedit PRIVATE wedit_media)
 endif()
-target_link_libraries(wubuedit PRIVATE wedit_project wedit_effects)
+target_link_libraries(wubuedit PRIVATE wedit_project wedit_effects wedit_proxy wedit_edl m)
 
 # ── Tests ─────────────────────────────────────────────────────────────────
 enable_testing()
 add_executable(test_timeline tests/test_timeline.c)
-target_link_libraries(test_timeline PRIVATE wedit_timeline wedit_project wedit_effects)
+target_link_libraries(test_timeline PRIVATE wedit_timeline wedit_project wedit_effects wedit_proxy wedit_edl m)
 add_test(NAME timeline_tests COMMAND test_timeline)
