@@ -39,6 +39,7 @@
 #include "wedit_clip_source.h"
 #include "wedit_encode.h"
 #include "wedit_mux.h"
+#include "wedit_framebuffer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -101,130 +102,12 @@ void wedit_render_default_opts(wedit_render_opts_t* opts)
     opts->progress_data = NULL;
 }
 
-/* =========================================================================
- * Blend modes (CPU compositing, matching Diffusion Studio's Gf table)
- * Gf = ["source-over", "multiply", "screen", "overlay", "difference"]
- * ========================================================================= */
+/* Forward declaration: CPU watermark fallback */
+static void draw_wubu_watermark(unsigned char* pixels, int width, int height,
+                                float beat_phase);
 
-/* Source-over alpha blending: fg OVER bg */
-static void blend_source_over(unsigned char* dst, const unsigned char* src,
-                              int width, int height)
-{
-    for (int i = 0; i < width * height * 4; i += 4) {
-        float sa = src[i + 3] / 255.0f;
-        if (sa < 0.004f) continue;  /* skip transparent pixels */
-        float da = dst[i + 3] / 255.0f;
-        float out_a = sa + da * (1.0f - sa);
-        if (out_a < 0.004f) {
-            dst[i + 0] = 0;
-            dst[i + 1] = 0;
-            dst[i + 2] = 0;
-            dst[i + 3] = 0;
-        } else {
-            float ratio = sa / out_a;
-            dst[i + 0] = (unsigned char)(src[i + 0] * ratio + dst[i + 0] * (1.0f - ratio));
-            dst[i + 1] = (unsigned char)(src[i + 1] * ratio + dst[i + 1] * (1.0f - ratio));
-            dst[i + 2] = (unsigned char)(src[i + 2] * ratio + dst[i + 2] * (1.0f - ratio));
-            dst[i + 3] = (unsigned char)(out_a * 255.0f);
-        }
-    }
-}
-
-/* Multiply blend mode */
-static void blend_multiply(unsigned char* dst, const unsigned char* src,
-                           int width, int height)
-{
-    for (int i = 0; i < width * height * 4; i += 4) {
-        float sa = src[i + 3] / 255.0f;
-        if (sa > 0.004f) {
-            dst[i + 0] = (unsigned char)(dst[i + 0] * src[i + 0] / 255.0f);
-            dst[i + 1] = (unsigned char)(dst[i + 1] * src[i + 1] / 255.0f);
-            dst[i + 2] = (unsigned char)(dst[i + 2] * src[i + 2] / 255.0f);
-            dst[i + 3] = (unsigned char)(fmaxf((float)dst[i + 3], (float)src[i + 3]));
-        }
-    }
-}
-
-/* Screen blend mode */
-static void blend_screen(unsigned char* dst, const unsigned char* src,
-                         int width, int height)
-{
-    for (int i = 0; i < width * height * 4; i += 4) {
-        float sa = src[i + 3] / 255.0f;
-        if (sa > 0.004f) {
-            dst[i + 0] = (unsigned char)(255.0f - (255.0f - dst[i + 0]) * (255.0f - src[i + 0]) / 255.0f);
-            dst[i + 1] = (unsigned char)(255.0f - (255.0f - dst[i + 1]) * (255.0f - src[i + 1]) / 255.0f);
-            dst[i + 2] = (unsigned char)(255.0f - (255.0f - dst[i + 2]) * (255.0f - src[i + 2]) / 255.0f);
-            dst[i + 3] = (unsigned char)(fmaxf((float)dst[i + 3], (float)src[i + 3]));
-        }
-    }
-}
-
-/* Dispatch blend mode (matching Diffusion Studio's Gf table: 0=source-over, 1=multiply, 2=screen, 3=overlay, 4=difference) */
-static void composite_blend(unsigned char* dst, const unsigned char* src,
-                            int width, int height, int blend_mode)
-{
-    switch (blend_mode) {
-        case 1:  blend_multiply(dst, src, width, height); break;
-        case 2:  blend_screen(dst, src, width, height); break;
-        case 0:
-        default: blend_source_over(dst, src, width, height); break;
-    }
-}
-
-/* =========================================================================
- * Transition effects
- * ========================================================================= */
-
-/* Apply fade transition */
-static void apply_fade(unsigned char* pixels, int width, int height, float opacity)
-{
-    opacity = (float)clamp_f(opacity, 0.0, 1.0);
-    for (int i = 0; i < width * height * 4; i += 4) {
-        pixels[i + 0] = (unsigned char)(pixels[i + 0] * opacity);
-        pixels[i + 1] = (unsigned char)(pixels[i + 1] * opacity);
-        pixels[i + 2] = (unsigned char)(pixels[i + 2] * opacity);
-        pixels[i + 3] = (unsigned char)(pixels[i + 3] * opacity);
-    }
-}
-
-/* =========================================================================
- * Color grading (matches shader: brightness -> contrast -> saturation -> gamma)
- * ========================================================================= */
-
-static void apply_color_grade(unsigned char* pixels, int width, int height,
-                              float brightness, float contrast,
-                              float saturation, float gamma)
-{
-    for (int i = 0; i < width * height * 4; i += 4) {
-        float r = pixels[i + 0] / 255.0f;
-        float g = pixels[i + 1] / 255.0f;
-        float b = pixels[i + 2] / 255.0f;
-
-        r += brightness; g += brightness; b += brightness;
-        r = (r - 0.5f) * contrast + 0.5f;
-        g = (g - 0.5f) * contrast + 0.5f;
-        b = (b - 0.5f) * contrast + 0.5f;
-
-        float luma = 0.299f * r + 0.587f * g + 0.114f * b;
-        r = luma + (r - luma) * saturation;
-        g = luma + (g - luma) * saturation;
-        b = luma + (b - luma) * saturation;
-
-        if (gamma > 0.001f) {
-            r = powf(fmaxf(r, 0.0f), 1.0f / gamma);
-            g = powf(fmaxf(g, 0.0f), 1.0f / gamma);
-            b = powf(fmaxf(b, 0.0f), 1.0f / gamma);
-        }
-
-        pixels[i + 0] = (unsigned char)(clamp_f(r, 0.0f, 1.0f) * 255.0f);
-        pixels[i + 1] = (unsigned char)(clamp_f(g, 0.0f, 1.0f) * 255.0f);
-        pixels[i + 2] = (unsigned char)(clamp_f(b, 0.0f, 1.0f) * 255.0f);
-    }
-}
-
-/* =========================================================================
- * WuBu watermark (beat-synced pulse)
+/* ========================================================================
+ * WuBu watermark (beat-synced pulse, CPU fallback)
  * ========================================================================= */
 
 static void draw_wubu_watermark(unsigned char* pixels, int width, int height,
@@ -271,6 +154,7 @@ typedef struct {
 typedef struct {
     clip_cache_entry_t entries[CLIP_CACHE_MAX];
     int count;
+    wedit_framebuffer_t* framebuffer;  /* Shared virtual framebuffer (CPU/GPU) */
 } clip_cache_t;
 
 static void clip_cache_init(clip_cache_t* cache)
@@ -317,6 +201,9 @@ static void clip_cache_destroy(clip_cache_t* cache)
             wedit_clip_source_close(cache->entries[i].src);
         }
     }
+    if (cache->framebuffer) {
+        wedit_framebuffer_destroy(cache->framebuffer);
+    }
 }
 
 /*
@@ -345,8 +232,22 @@ static void render_frame_into(const wedit_timeline_t* tl,
     int track_count = wedit_timeline_track_count(tl);
     double duration = wedit_timeline_duration(tl);
 
+    /* Use the virtual framebuffer abstraction for compositing.
+     * The framebuffer routes to GPU or CPU transparently.
+     * Reuse the shared framebuffer from clip_cache, or create a per-frame CPU one. */
+    wedit_framebuffer_t* fb = NULL;
+    if (clip_cache && clip_cache->framebuffer) {
+        fb = clip_cache->framebuffer;
+    } else {
+        fb = wedit_framebuffer_create(width, height, WEDIT_FB_CPU);
+    }
+
     /* Clear to black */
-    memset(buf, 0, (size_t)width * height * 4);
+    if (fb) {
+        wedit_framebuffer_clear(fb, 0, 0, 0, 255);
+    } else {
+        memset(buf, 0, (size_t)width * height * 4);
+    }
 
     /* Render each track (bottom to top) */
     for (int tr = 0; tr < track_count; tr++) {
@@ -375,12 +276,16 @@ static void render_frame_into(const wedit_timeline_t* tl,
                 src = wedit_clip_source_open(clip->source_path,
                                              width, height);
             }
-            if (src) {
+            if (src && fb) {
                 wedit_clip_source_seek(src, source_time);
                 const unsigned char* rgba = wedit_clip_source_get_pixels(src);
                 if (rgba) {
-                    /* Composite the decoded clip frame onto the render buffer */
-                    composite_blend(buf, rgba, width, height, 0 /* source-over */);
+                    /* Composite via the virtual framebuffer abstraction.
+                     * The framebuffer routes this to GPU draw or CPU blend. */
+                    wedit_framebuffer_blend(fb, rgba,
+                                            wedit_clip_source_width(src),
+                                            wedit_clip_source_height(src),
+                                            0, 0, 0 /* source-over */);
                 }
                 /* Note: when using clip_cache, sources are closed by clip_cache_destroy */
             }
@@ -397,14 +302,14 @@ static void render_frame_into(const wedit_timeline_t* tl,
             if (in_transition && clip->transition == WEDIT_TRANSITION_FADE) {
                 double progress = (frame_time - transition_start) / clip->transition_duration;
                 float opacity = 1.0f - (float)progress;
-                apply_fade(buf, width, height, opacity);
+                wedit_framebuffer_fade(fb, opacity);
             }
 
             /* Color grade on video track (matches GPU shader pipeline) */
-            if (tr == 0) {
-                apply_color_grade(buf, width, height,
-                                  color_brightness, color_contrast,
-                                  color_saturation, color_gamma);
+            if (tr == 0 && fb) {
+                wedit_framebuffer_color_grade(fb,
+                                              color_brightness, color_contrast,
+                                              color_saturation, color_gamma);
             }
         }
         free(clips);
@@ -412,9 +317,19 @@ static void render_frame_into(const wedit_timeline_t* tl,
 
     /* WuBu watermark with beat-synced pulse */
     float t_frac = duration > 0 ? (float)(frame_time / duration) : 0;
-    draw_wubu_watermark(buf, width, height, t_frac);
+    if (fb) {
+        wedit_framebuffer_watermark(fb, t_frac);
+        /* Read back from virtual framebuffer to the output RGBA buffer */
+        wedit_framebuffer_readback(fb, buf);
+        /* Only destroy if we created it per-frame (not the shared one) */
+        if (!clip_cache || !clip_cache->framebuffer) {
+            wedit_framebuffer_destroy(fb);
+        }
+    } else {
+        /* Fallback if framebuffer creation failed */
+        draw_wubu_watermark(buf, width, height, t_frac);
+    }
 }
-
 /* =========================================================================
  * Public API: custom callback render (no encode)
  * ========================================================================= */
@@ -438,6 +353,16 @@ int wedit_render_timeline_custom(const wedit_timeline_t* tl,
     /* Create clip source cache for the render session */
     clip_cache_t clip_cache;
     clip_cache_init(&clip_cache);
+
+    /* If GPU rendering is requested, create a GPU-backed framebuffer */
+    if (opts->use_gpu_rendering) {
+        clip_cache.framebuffer = wedit_framebuffer_create(width, height, WEDIT_FB_GPU);
+        if (clip_cache.framebuffer) {
+            printf("[wedit_render] GPU compositing: %s backend\n",
+                   wedit_framebuffer_backend(clip_cache.framebuffer) == WEDIT_FB_GPU
+                   ? "GPU" : "CPU (fallback)");
+        }
+    }
 
     printf("[wedit_render] Rendering: %dx%d @ %.2ffps, %.1f seconds, %d frames\n",
            width, height, fps, duration, total_frames);
@@ -548,11 +473,21 @@ int wedit_render_timeline(const wedit_timeline_t* tl,
                               width, height, AV_PIX_FMT_YUV420P,
                               SWS_BILINEAR, NULL, NULL, NULL);
 
-    printf("[wedit_render] Encoding %d frames to %s\n", total_frames, output_path);
-
     /* Create clip source cache for the encode session */
     clip_cache_t clip_cache;
     clip_cache_init(&clip_cache);
+
+    /* If GPU rendering is requested, create a GPU-backed framebuffer */
+    if (opts->use_gpu_rendering) {
+        clip_cache.framebuffer = wedit_framebuffer_create(width, height, WEDIT_FB_GPU);
+        if (clip_cache.framebuffer) {
+            printf("[wedit_render] GPU compositing: %s backend\n",
+                   wedit_framebuffer_backend(clip_cache.framebuffer) == WEDIT_FB_GPU
+                   ? "GPU" : "CPU (fallback)");
+        }
+    }
+
+    printf("[wedit_render] Encoding %d frames to %s\n", total_frames, output_path);
 
     for (int frame = 0; frame < total_frames; frame++) {
         double frame_time = (double)frame / fps;

@@ -175,6 +175,19 @@ if(WEDIT_AV_FOUND)
     target_compile_definitions(wedit_preview PUBLIC WEDIT_HAS_FFMPEG=1)
 endif()
 
+# ── Virtual framebuffer abstraction (CPU + GPU compositing surface) ─────────
+add_library(wedit_framebuffer STATIC
+    src/wedit_framebuffer.c
+)
+target_include_directories(wedit_framebuffer PUBLIC src)
+target_link_libraries(wedit_framebuffer PUBLIC wedit_timeline m)
+if(TARGET wugui_renderer)
+    target_link_libraries(wedit_framebuffer PUBLIC wugui_renderer)
+endif()
+if(WEDIT_AV_FOUND)
+    target_compile_definitions(wedit_framebuffer PUBLIC WEDIT_HAS_FFMPEG=1)
+endif()
+
 # ── Render pipeline (pure C11 core, FFmpeg for encode/mux plumbing) ────────
 # Frame-by-frame compositing: timeline → clip lookup → decode → composite → encode
 # Uses CPU blend modes (matching Diffusion Studio's Gf table) + color grading.
@@ -184,7 +197,7 @@ add_library(wedit_render STATIC
     src/wedit_clip_source.c
 )
 target_include_directories(wedit_render PUBLIC src)
-target_link_libraries(wedit_render PUBLIC wedit_timeline wedit_effects wedit_filter m)
+target_link_libraries(wedit_render PUBLIC wedit_timeline wedit_effects wedit_filter wedit_framebuffer m)
 if(WEDIT_AV_FOUND)
     target_link_libraries(wedit_render PUBLIC wedit_media)
     target_compile_definitions(wedit_render PUBLIC WEDIT_HAS_FFMPEG=1)
@@ -202,7 +215,7 @@ target_link_libraries(wubuedit PRIVATE wedit_timeline)
 if(WEDIT_AV_FOUND)
     target_link_libraries(wubuedit PRIVATE wedit_media)
 endif()
-target_link_libraries(wubuedit PRIVATE wedit_project wedit_effects wedit_proxy wedit_edl wedit_render wedit_preview wedit_filter m)
+target_link_libraries(wubuedit PRIVATE wedit_project wedit_effects wedit_proxy wedit_edl wedit_render wedit_preview wedit_filter wedit_framebuffer m)
 
 # ── Tests ─────────────────────────────────────────────────────────────────
 enable_testing()
@@ -213,6 +226,6 @@ add_test(NAME timeline_tests COMMAND test_timeline)
 # ── Render pipeline tests (requires FFmpeg for media decode) ──────────────
 if(WEDIT_AV_FOUND)
     add_executable(test_render tests/test_render.c)
-    target_link_libraries(test_render PRIVATE wedit_render wedit_timeline wedit_project m)
+    target_link_libraries(test_render PRIVATE wedit_render wedit_timeline wedit_project wedit_framebuffer m)
     add_test(NAME render_tests COMMAND test_render)
 endif()
