@@ -147,6 +147,7 @@ int wedit_clip_source_seek(wedit_clip_source_t* src, double timestamp)
     }
 
     /* Cache check: if we already have this frame, return immediately */
+    /* Cache hit: if we've already decoded this exact timestamp, return */
     if (src->cached_timestamp >= 0.0 &&
         fabs(src->cached_timestamp - timestamp) < 0.01) {
         return 0;
@@ -157,37 +158,49 @@ int wedit_clip_source_seek(wedit_clip_source_t* src, double timestamp)
         return -1;
     }
 
+    /* Forward-only optimization: if the requested timestamp is just slightly
+     * ahead of the cached timestamp (within ~1 second), skip the expensive
+     * av_seek_frame + avcodec_flush_buffers and just decode forward.
+     * This is critical for frame-by-frame rendering at 30fps where each
+     * frame is only 0.033s apart. */
+    int forward_decode = 0;
+    if (src->cached_timestamp >= 0.0 &&
+        timestamp > src->cached_timestamp &&
+        (timestamp - src->cached_timestamp) < 1.0) {
+        forward_decode = 1;
+    }
+
     /* Convert timestamp to stream time_base */
     AVRational time_base = fmt_ctx->streams[src->video_stream_idx]->time_base;
-    int64_t ts = (int64_t)(timestamp * time_base.den / time_base.num);
-
-    /* Seek to nearest keyframe before target */
-    if (av_seek_frame(fmt_ctx, src->video_stream_idx, ts,
-                      AVSEEK_FLAG_BACKWARD) < 0) {
-        /* Fallback: seek to beginning */
-        if (av_seek_frame(fmt_ctx, src->video_stream_idx, 0, 0) < 0) {
-            return -1;
-        }
-    }
-
-    /* Flush decoder to clear any buffered frames */
-    /* The decoder struct has codec_ctx — flush it */
-    if (src->decoder->codec_ctx) {
-        avcodec_flush_buffers(src->decoder->codec_ctx);
-    }
-
-    /* Now decode forward to the target timestamp */
-    int64_t target_pts = ts;
-    int64_t current_pts = AV_NOPTS_VALUE;
+    int64_t target_pts = (int64_t)(timestamp * time_base.den / time_base.num);
 
     AVPacket* packet = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
+
+    if (!forward_decode) {
+        /* Seek to nearest keyframe before target */
+        if (av_seek_frame(fmt_ctx, src->video_stream_idx, target_pts,
+                          AVSEEK_FLAG_BACKWARD) < 0) {
+            /* Fallback: seek to beginning */
+            if (av_seek_frame(fmt_ctx, src->video_stream_idx, 0, 0) < 0) {
+                av_packet_free(&packet);
+                av_frame_free(&frame);
+                return -1;
+            }
+        }
+        /* Flush decoder to clear any buffered frames */
+        if (src->decoder->codec_ctx) {
+            avcodec_flush_buffers(src->decoder->codec_ctx);
+        }
+    }
 
     if (!packet || !frame) {
         av_packet_free(&packet);
         av_frame_free(&frame);
         return -1;
     }
+
+    int64_t current_pts = AV_NOPTS_VALUE;
 
     int found = 0;
     while (av_read_frame(fmt_ctx, packet) >= 0) {

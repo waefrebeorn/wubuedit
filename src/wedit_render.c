@@ -252,7 +252,72 @@ static void draw_wubu_watermark(unsigned char* pixels, int width, int height,
 
 /* =========================================================================
  * Frame-level rendering (no encode — produces RGBA buffer)
- * ========================================================================= */
+ * =========================================================================
+
+ * A simple clip-source cache: key by source_path, cache the open handle
+ * across frames so we don't re-open/re-seek the same media file every
+ * frame. The render loop creates this once and passes it to
+ * render_frame_into(). */
+
+#define CLIP_CACHE_MAX 32
+
+typedef struct {
+    char path[512];
+    wedit_clip_source_t* src;
+    int width;
+    int height;
+} clip_cache_entry_t;
+
+typedef struct {
+    clip_cache_entry_t entries[CLIP_CACHE_MAX];
+    int count;
+} clip_cache_t;
+
+static void clip_cache_init(clip_cache_t* cache)
+{
+    memset(cache, 0, sizeof(clip_cache_t));
+}
+
+static wedit_clip_source_t* clip_cache_get(clip_cache_t* cache,
+                                            const char* path,
+                                            int width, int height)
+{
+    if (!cache || !path) return NULL;
+
+    /* Look for existing entry */
+    for (int i = 0; i < cache->count; i++) {
+        if (strcmp(cache->entries[i].path, path) == 0
+            && cache->entries[i].width == width
+            && cache->entries[i].height == height) {
+            return cache->entries[i].src;
+        }
+    }
+
+    /* Not found — create new */
+    if (cache->count >= CLIP_CACHE_MAX) return NULL;
+
+    wedit_clip_source_t* src = wedit_clip_source_open(path, width, height);
+    if (!src) return NULL;
+
+    clip_cache_entry_t* e = &cache->entries[cache->count];
+    strncpy(e->path, path, 511);
+    e->path[511] = '\0';
+    e->src = src;
+    e->width = width;
+    e->height = height;
+    cache->count++;
+    return src;
+}
+
+static void clip_cache_destroy(clip_cache_t* cache)
+{
+    if (!cache) return;
+    for (int i = 0; i < cache->count; i++) {
+        if (cache->entries[i].src) {
+            wedit_clip_source_close(cache->entries[i].src);
+        }
+    }
+}
 
 /*
  * Render one frame of the timeline into the given RGBA buffer.
@@ -272,7 +337,8 @@ static void render_frame_into(const wedit_timeline_t* tl,
                               float color_brightness, float color_contrast,
                               float color_saturation, float color_gamma,
                               wedit_render_frame_fn external_cb,
-                              void* external_user_data)
+                              void* external_user_data,
+                              clip_cache_t* clip_cache)
 {
     (void)external_cb;
     (void)external_user_data;
@@ -300,18 +366,23 @@ static void render_frame_into(const wedit_timeline_t* tl,
             double source_time = clip->source_in + clip_time;
 
 #ifdef WEDIT_HAS_FFMPEG
-            /* Open decode source and get RGBA pixels */
-            wedit_clip_source_t* src = wedit_clip_source_open(
-                clip->source_path, width, height);
+            /* Get clip source from cache (open if not cached) */
+            wedit_clip_source_t* src = NULL;
+            if (clip_cache) {
+                src = clip_cache_get(clip_cache, clip->source_path,
+                                     width, height);
+            } else {
+                src = wedit_clip_source_open(clip->source_path,
+                                             width, height);
+            }
             if (src) {
-                if (wedit_clip_source_seek(src, source_time) == 0) {
-                    const unsigned char* rgba = wedit_clip_source_get_pixels(src);
-                    if (rgba) {
-                        /* Composite the decoded clip frame onto the render buffer */
-                        composite_blend(buf, rgba, width, height, 0 /* source-over */);
-                    }
+                wedit_clip_source_seek(src, source_time);
+                const unsigned char* rgba = wedit_clip_source_get_pixels(src);
+                if (rgba) {
+                    /* Composite the decoded clip frame onto the render buffer */
+                    composite_blend(buf, rgba, width, height, 0 /* source-over */);
                 }
-                wedit_clip_source_close(src);
+                /* Note: when using clip_cache, sources are closed by clip_cache_destroy */
             }
 #else
             /* Procedural fallback: no clip media available */
@@ -364,6 +435,10 @@ int wedit_render_timeline_custom(const wedit_timeline_t* tl,
     unsigned char* frame_buf = malloc((size_t)width * height * 4);
     if (!frame_buf) return -1;
 
+    /* Create clip source cache for the render session */
+    clip_cache_t clip_cache;
+    clip_cache_init(&clip_cache);
+
     printf("[wedit_render] Rendering: %dx%d @ %.2ffps, %.1f seconds, %d frames\n",
            width, height, fps, duration, total_frames);
 
@@ -371,7 +446,7 @@ int wedit_render_timeline_custom(const wedit_timeline_t* tl,
         double frame_time = (double)frame / fps;
 
         render_frame_into(tl, frame_time, frame_buf, width, height,
-                          0.0f, 1.0f, 1.0f, 1.0f, NULL, NULL);
+                          0.0f, 1.0f, 1.0f, 1.0f, NULL, NULL, &clip_cache);
 
         int ret = render_frame(frame, frame_time, frame_buf, width, height, user_data);
         if (ret != 0) {
@@ -389,6 +464,7 @@ int wedit_render_timeline_custom(const wedit_timeline_t* tl,
     }
 
     printf("[wedit_render] Render complete: %d frames\n", total_frames);
+    clip_cache_destroy(&clip_cache);
     free(frame_buf);
     return 0;
 }
@@ -403,7 +479,7 @@ int wedit_render_frame_at(const wedit_timeline_t* tl,
 {
     if (!tl || !opts || !buf) return -1;
     render_frame_into(tl, frame_time, buf, width, height,
-                      0.0f, 1.0f, 1.0f, 1.0f, NULL, NULL);
+                      0.0f, 1.0f, 1.0f, 1.0f, NULL, NULL, NULL);
     return 0;
 }
 
@@ -474,12 +550,16 @@ int wedit_render_timeline(const wedit_timeline_t* tl,
 
     printf("[wedit_render] Encoding %d frames to %s\n", total_frames, output_path);
 
+    /* Create clip source cache for the encode session */
+    clip_cache_t clip_cache;
+    clip_cache_init(&clip_cache);
+
     for (int frame = 0; frame < total_frames; frame++) {
         double frame_time = (double)frame / fps;
 
         /* Render the frame (same pipeline as custom, inline for encode) */
         render_frame_into(tl, frame_time, rgba_buf, width, height,
-                          0.0f, 1.0f, 1.0f, 1.0f, NULL, NULL);
+                          0.0f, 1.0f, 1.0f, 1.0f, NULL, NULL, &clip_cache);
 
         /* Convert RGBA (RGB0) -> YUV420P */
         const uint8_t* data[4] = { rgba_buf, NULL, NULL, NULL };
@@ -534,6 +614,7 @@ int wedit_render_timeline(const wedit_timeline_t* tl,
     free(yuv_buf);
     wedit_muxer_finalize(muxer);
     wedit_encoder_destroy(encoder);
+    clip_cache_destroy(&clip_cache);
 
     printf("[wedit_render] Encode complete: %s\n", output_path);
     return 0;
