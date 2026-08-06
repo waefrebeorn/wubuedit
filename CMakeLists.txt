@@ -53,6 +53,8 @@ add_library(wedit_edl STATIC
 target_include_directories(wedit_edl PUBLIC src)
 target_link_libraries(wedit_edl PUBLIC wedit_timeline)
 
+# ── Render pipeline (FFmpeg deps linked after detection below) ────────────
+
 # ── GPU renderer (SDL2 + OpenGL, pure C11) ─────────────────────────────
 # SDL2 + OpenGL are SYSTEM LIBRARIES, linked like -lz.
 # Shaders are original GLSL code written by WuBu — the YUV→RGB decoder
@@ -153,6 +155,45 @@ else()
     message(STATUS "FFmpeg/libav not found — timeline-only mode")
 endif()
 
+# ── Filter chain (native C11 pixel processing, AGI path) ──────────────────
+add_library(wedit_filter STATIC
+    src/wedit_filter.c
+)
+target_include_directories(wedit_filter PUBLIC src)
+target_link_libraries(wedit_filter PUBLIC wedit_timeline m)
+
+# ── Preview engine (GPU-accelerated real-time preview) ──────────────────
+add_library(wedit_preview STATIC
+    src/wedit_preview.c
+)
+target_include_directories(wedit_preview PUBLIC src)
+target_link_libraries(wedit_preview PUBLIC wedit_timeline wedit_render wedit_filter m)
+if(TARGET wugui_renderer)
+    target_link_libraries(wedit_preview PUBLIC wugui_renderer)
+endif()
+if(WEDIT_AV_FOUND)
+    target_compile_definitions(wedit_preview PUBLIC WEDIT_HAS_FFMPEG=1)
+endif()
+
+# ── Render pipeline (pure C11 core, FFmpeg for encode/mux plumbing) ────────
+# Frame-by-frame compositing: timeline → clip lookup → decode → composite → encode
+# Uses CPU blend modes (matching Diffusion Studio's Gf table) + color grading.
+# GPU path hooks into wugui_renderer when SDL2 is available.
+add_library(wedit_render STATIC
+    src/wedit_render.c
+    src/wedit_clip_source.c
+)
+target_include_directories(wedit_render PUBLIC src)
+target_link_libraries(wedit_render PUBLIC wedit_timeline wedit_effects wedit_filter m)
+if(WEDIT_AV_FOUND)
+    target_link_libraries(wedit_render PUBLIC wedit_media)
+    target_compile_definitions(wedit_render PUBLIC WEDIT_HAS_FFMPEG=1)
+endif()
+# Link wugui_renderer for GPU compositing path (when available)
+if(TARGET wugui_renderer)
+    target_link_libraries(wedit_render PUBLIC wugui_renderer)
+endif()
+
 # ── CLI entry point ───────────────────────────────────────────────────────
 add_executable(wubuedit
     src/wedit_main.c
@@ -161,10 +202,17 @@ target_link_libraries(wubuedit PRIVATE wedit_timeline)
 if(WEDIT_AV_FOUND)
     target_link_libraries(wubuedit PRIVATE wedit_media)
 endif()
-target_link_libraries(wubuedit PRIVATE wedit_project wedit_effects wedit_proxy wedit_edl m)
+target_link_libraries(wubuedit PRIVATE wedit_project wedit_effects wedit_proxy wedit_edl wedit_render wedit_preview wedit_filter m)
 
 # ── Tests ─────────────────────────────────────────────────────────────────
 enable_testing()
 add_executable(test_timeline tests/test_timeline.c)
-target_link_libraries(test_timeline PRIVATE wedit_timeline wedit_project wedit_effects wedit_proxy wedit_edl m)
+target_link_libraries(test_timeline PRIVATE wedit_timeline wedit_project wedit_effects wedit_proxy wedit_edl wedit_filter m)
 add_test(NAME timeline_tests COMMAND test_timeline)
+
+# ── Render pipeline tests (requires FFmpeg for media decode) ──────────────
+if(WEDIT_AV_FOUND)
+    add_executable(test_render tests/test_render.c)
+    target_link_libraries(test_render PRIVATE wedit_render wedit_timeline wedit_project m)
+    add_test(NAME render_tests COMMAND test_render)
+endif()

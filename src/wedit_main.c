@@ -27,8 +27,10 @@
  * FFmpeg/libav provides codec/container plumbing (linked as system library).
  */
 #include "wedit_timeline.h"
+#include "wedit_render.h"
 #include "wedit_proxy.h"
 #include "wedit_edl.h"
+#include "wedit_preview.h"
 #ifdef WEDIT_HAS_FFMPEG
 #include "wedit_demux.h"
 #endif
@@ -47,6 +49,7 @@ static void usage(const char* prog)
         "Commands:\n"
         "  render <output.mp4>        Render the demo timeline to video\n"
         "  info                       Show timeline info\n"
+        "  preview <n_frames>         Preview N frames via GPU renderer\n"
         "  proxy <source.mp4>         Generate low-res proxy for scrubbing\n"
         "  edl <output.edl>           Export timeline to CMX 3600 EDL\n"
         "  help                       Show this help\n"
@@ -143,22 +146,25 @@ int main(int argc, char** argv)
             return 1;
         }
 
-        printf("Building render command...\n");
-        char* cmd_str = wedit_timeline_build_render_command(
-            tl, 0 /* video_track */, 1 /* audio_track */,
-            output, 720, 1280 /* portrait */);
+        wedit_render_opts_t opts;
+        wedit_render_default_opts(&opts);
+        opts.width = 1280;
+        opts.height = 720;
+        opts.fps = 30.0;
+        opts.crf = 23;
+        opts.preset = "fast";
+        opts.gpu_encode = 1;  /* Use NVIDIA NVENC if available */
 
-        if (cmd_str) {
-            printf("Render command:\n%s\n\n", cmd_str);
-            printf("To render, run the above command with ffmpeg.\n");
-            printf("(In WubuEdit, this would use libavformat/libavcodec directly.)\n");
-            free(cmd_str);
+        printf("Rendering timeline to %s...\n", output);
+        int ret = wedit_render_timeline(tl, output, &opts);
+        if (ret == 0) {
+            printf("Render complete: %s\n", output);
         } else {
-            printf("Failed to build render command.\n");
+            fprintf(stderr, "Render failed (code %d)\n", ret);
         }
 
         wedit_timeline_destroy(tl);
-        return 0;
+        return ret;
     }
 
     if (strcmp(cmd, "proxy") == 0) {
@@ -183,6 +189,43 @@ int main(int argc, char** argv)
                     source, (int)result);
             return 1;
         }
+    }
+
+    if (strcmp(cmd, "preview") == 0) {
+        int n_frames = argc > 2 ? atoi(argv[2]) : 60;
+        wedit_timeline_t* tl = build_demo_timeline();
+        if (!tl) {
+            fprintf(stderr, "Failed to create timeline\n");
+            return 1;
+        }
+        wedit_render_opts_t opts;
+        wedit_render_default_opts(&opts);
+        opts.width = 1280;
+        opts.height = 720;
+        opts.fps = 30.0;
+
+        wedit_preview_t* pv = wedit_preview_create(tl, &opts);
+        if (!pv) {
+            fprintf(stderr, "Failed to create preview\n");
+            wedit_timeline_destroy(tl);
+            return 1;
+        }
+
+        printf("Previewing %d frames...\n", n_frames);
+        for (int i = 0; i < n_frames; i++) {
+            double t = (double)i / opts.fps;
+            if (wedit_preview_render_frame(pv, t) != 0) {
+                fprintf(stderr, "Preview frame %d failed\n", i);
+                wedit_preview_destroy(pv);
+                wedit_timeline_destroy(tl);
+                return 1;
+            }
+        }
+        printf("Preview complete: %d frames rendered\n", n_frames);
+
+        wedit_preview_destroy(pv);
+        wedit_timeline_destroy(tl);
+        return 0;
     }
 
     if (strcmp(cmd, "edl") == 0) {

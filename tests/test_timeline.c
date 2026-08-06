@@ -31,6 +31,7 @@
 #include "wedit_demux.h"
 #include "wedit_project.h"
 #include "wedit_effects.h"
+#include "wedit_filter.h"
 
 static int tests_run = 0;
 static int tests_passed = 0;
@@ -648,6 +649,182 @@ static void test_effects_pipeline(void)
     PASS();
 }
 
+/* ── Filter chain tests ─────────────────────────────────────────────────── */
+
+static void test_filter_chain_init_free(void)
+{
+    TEST("filter_chain_init_free");
+    wedit_filter_chain_t chain;
+    if (wedit_filter_chain_init(&chain, 4) != 0) {
+        FAIL("init failed"); return;
+    }
+    if (chain.count != 0 || chain.capacity != 4) {
+        FAIL("count or capacity wrong");
+        wedit_filter_chain_free(&chain); return;
+    }
+    if (chain.items == NULL) {
+        FAIL("items should be allocated");
+        wedit_filter_chain_free(&chain); return;
+    }
+    wedit_filter_chain_free(&chain);
+    if (chain.items != NULL || chain.count != 0 || chain.capacity != 0) {
+        FAIL("free did not zero out chain"); return;
+    }
+    PASS();
+}
+
+static void test_filter_chain_add_and_apply(void)
+{
+    TEST("filter_chain_add_and_apply");
+    wedit_filter_chain_t chain;
+    if (wedit_filter_chain_init(&chain, 2) != 0) {
+        FAIL("init failed"); return;
+    }
+
+    /* Add a color correction filter */
+    wedit_filter_t color = wedit_filter_color(0.1f, 1.2f, 1.5f, 1.0f, 0.0, 0.0);
+    if (wedit_filter_chain_add(&chain, &color) != 0) {
+        FAIL("add color filter failed");
+        wedit_filter_chain_free(&chain); return;
+    }
+    if (chain.count != 1) {
+        FAIL("count != 1 after add");
+        wedit_filter_chain_free(&chain); return;
+    }
+
+    /* Add a blur filter */
+    wedit_filter_t blur = wedit_filter_blur(2.0f, 1.5f, 0.0, 0.0);
+    if (wedit_filter_chain_add(&chain, &blur) != 0) {
+        FAIL("add blur filter failed");
+        wedit_filter_chain_free(&chain); return;
+    }
+    if (chain.count != 2) {
+        FAIL("count != 2 after second add");
+        wedit_filter_chain_free(&chain); return;
+    }
+
+    /* Create a test RGBA buffer (2x2 pixels = 16 bytes) */
+    int w = 2, h = 2;
+    unsigned char pixels[16];
+    memset(pixels, 128, sizeof(pixels));
+    pixels[3] = 255;  /* alpha */
+    pixels[7] = 255;
+    pixels[11] = 255;
+    pixels[15] = 255;
+
+    /* Apply filters at t=0 (should both be active) */
+    unsigned char before[16];
+    memcpy(before, pixels, sizeof(pixels));
+
+    if (wedit_filter_chain_apply(&chain, pixels, w, h, 0.0) != 0) {
+        FAIL("apply failed");
+        wedit_filter_chain_free(&chain); return;
+    }
+
+    /* Color grade should have changed pixels (brightness + contrast + saturation) */
+    int changed = 0;
+    for (int i = 0; i < 16; i += 4) {
+        if (pixels[i] != before[i] || pixels[i+1] != before[i+1] ||
+            pixels[i+2] != before[i+2]) {
+            changed = 1; break;
+        }
+    }
+    if (!changed) {
+        FAIL("color filter did not modify pixels");
+        wedit_filter_chain_free(&chain); return;
+    }
+
+    wedit_filter_chain_free(&chain);
+    PASS();
+}
+
+static void test_filter_timing(void)
+{
+    TEST("filter_timing");
+    wedit_filter_chain_t chain;
+    if (wedit_filter_chain_init(&chain, 1) != 0) {
+        FAIL("init failed"); return;
+    }
+
+    /* Color filter active only between 1.0 and 2.0 seconds */
+    wedit_filter_t color = wedit_filter_color(0.5f, 1.0f, 1.0f, 1.0f, 1.0, 2.0);
+    wedit_filter_chain_add(&chain, &color);
+
+    int w = 4, h = 4;
+    unsigned char pixels[4 * 4 * 4];
+    memset(pixels, 200, sizeof(pixels));
+    /* Set alpha */
+    for (int i = 3; i < 64; i += 4) pixels[i] = 255;
+    unsigned char snapshot[64];
+    memcpy(snapshot, pixels, sizeof(pixels));
+
+    /* At t=0.5 — before filter window, should be unchanged */
+    if (wedit_filter_chain_apply(&chain, pixels, w, h, 0.5) != 0) {
+        FAIL("apply at t=0.5 failed");
+        wedit_filter_chain_free(&chain); return;
+    }
+    if (memcmp(pixels, snapshot, sizeof(pixels)) != 0) {
+        FAIL("filter applied before its time window");
+        wedit_filter_chain_free(&chain); return;
+    }
+
+    /* At t=1.5 — inside filter window, should be changed */
+    memcpy(pixels, snapshot, sizeof(pixels));
+    if (wedit_filter_chain_apply(&chain, pixels, w, h, 1.5) != 0) {
+        FAIL("apply at t=1.5 failed");
+        wedit_filter_chain_free(&chain); return;
+    }
+    if (memcmp(pixels, snapshot, sizeof(pixels)) == 0) {
+        FAIL("filter did not apply during active window");
+        wedit_filter_chain_free(&chain); return;
+    }
+
+    /* At t=2.5 — after filter window, should be unchanged */
+    memcpy(pixels, snapshot, sizeof(pixels));
+    if (wedit_filter_chain_apply(&chain, pixels, w, h, 2.5) != 0) {
+        FAIL("apply at t=2.5 failed");
+        wedit_filter_chain_free(&chain); return;
+    }
+    if (memcmp(pixels, snapshot, sizeof(pixels)) != 0) {
+        FAIL("filter applied after its time window");
+        wedit_filter_chain_free(&chain); return;
+    }
+
+    wedit_filter_chain_free(&chain);
+    PASS();
+}
+
+static void test_filter_disabled(void)
+{
+    TEST("filter_disabled");
+    wedit_filter_chain_t chain;
+    if (wedit_filter_chain_init(&chain, 1) != 0) {
+        FAIL("init failed"); return;
+    }
+
+    wedit_filter_t color = wedit_filter_color(0.5f, 1.0f, 1.0f, 1.0f, 0.0, 0.0);
+    color.enabled = 0;  /* disabled */
+    wedit_filter_chain_add(&chain, &color);
+
+    int w = 4, h = 4;
+    unsigned char pixels[4 * 4 * 4];
+    memset(pixels, 128, sizeof(pixels));
+    unsigned char snapshot[64];
+    memcpy(snapshot, pixels, sizeof(pixels));
+
+    if (wedit_filter_chain_apply(&chain, pixels, w, h, 0.0) != 0) {
+        FAIL("apply failed");
+        wedit_filter_chain_free(&chain); return;
+    }
+    if (memcmp(pixels, snapshot, sizeof(pixels)) != 0) {
+        FAIL("disabled filter should not modify pixels");
+        wedit_filter_chain_free(&chain); return;
+    }
+
+    wedit_filter_chain_free(&chain);
+    PASS();
+}
+
 int main(void)
 {
     printf("=== WubuEdit Timeline Model Tests ===\n\n");
@@ -664,6 +841,10 @@ int main(void)
     test_invalid_add();
     test_project_save_load();
     test_effects_pipeline();
+    test_filter_chain_init_free();
+    test_filter_chain_add_and_apply();
+    test_filter_timing();
+    test_filter_disabled();
 
     printf("\n=== Results ===\n");
     printf("  Total:  %d\n", tests_run);
