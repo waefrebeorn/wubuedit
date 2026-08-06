@@ -53,6 +53,57 @@ add_library(wedit_edl STATIC
 target_include_directories(wedit_edl PUBLIC src)
 target_link_libraries(wedit_edl PUBLIC wedit_timeline)
 
+# ── GPU renderer (SDL2 + OpenGL, pure C11) ─────────────────────────────
+# SDL2 + OpenGL are SYSTEM LIBRARIES, linked like -lz.
+# Shaders are original GLSL code written by WuBu — the YUV→RGB decoder
+# is adapted from Diffusion Studio's decompiled shader architecture.
+find_package(OpenGL QUIET)
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(SDL2 QUIET sdl2)
+    pkg_check_modules(GLEW QUIET glew)
+endif()
+
+# Also check GLEW directly (pkg_check_modules sometimes doesn't set _FOUND correctly)
+find_path(GLEW_INCLUDE_DIR GL/glew.h)
+find_library(GLEW_LIBRARY NAMES GLEW glew)
+if(GLEW_INCLUDE_DIR AND GLEW_LIBRARY)
+    set(GLEW_FOUND TRUE)
+    set(GLEW_INCLUDE_DIRS ${GLEW_INCLUDE_DIR})
+    set(GLEW_LIBRARIES ${GLEW_LIBRARY})
+endif()
+
+if(SDL2_FOUND)
+    add_library(wugui_renderer STATIC
+        src/wugui_renderer.c
+    )
+    target_include_directories(wugui_renderer PUBLIC src)
+    target_include_directories(wugui_renderer PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(wugui_renderer PUBLIC
+        wedit_timeline
+        ${SDL2_LIBRARIES}
+        ${SDL2_LDFLAGS}
+    )
+    if(OPENGL_FOUND)
+        target_link_libraries(wugui_renderer PUBLIC OpenGL::GL)
+    endif()
+    if(GLEW_FOUND)
+        if(GLEW_INCLUDE_DIRS)
+            target_include_directories(wugui_renderer PRIVATE ${GLEW_INCLUDE_DIRS})
+        endif()
+        if(GLEW_LIBRARIES)
+            target_link_libraries(wugui_renderer PUBLIC ${GLEW_LIBRARIES})
+        endif()
+        target_compile_definitions(wugui_renderer PUBLIC WUGUI_HAS_GLEW=1)
+    else()
+        target_compile_definitions(wugui_renderer PUBLIC WUGUI_HAS_SDL_LOADER=1)
+    endif()
+    target_compile_definitions(wugui_renderer PUBLIC WUGUI_HAS_SDL2=1)
+    message(STATUS "SDL2 + OpenGL found — GPU renderer enabled")
+else()
+    message(STATUS "SDL2 not found — GUI renderer disabled (CLI-only mode)")
+endif()
+
 # ── FFmpeg integration (optional, for demux/decode/encode/mux) ───────────
 # FFmpeg/libav is a SYSTEM LIBRARY we link against, like -lz.
 # It provides codec/container plumbing. Our timeline model is from-scratch C11.
