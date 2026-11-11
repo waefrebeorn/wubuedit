@@ -9,6 +9,8 @@ WubuEdit is a from-scratch (SLERM) C11 video editor. It uses FFmpeg/libav as a
 source. The timeline model, project format, effects pipeline, and CLI are all
 written byte-for-byte by hand.
 
+> **~WuBu~ AGI** — one system, many repositories. This is the **SLERM ground-up C11 video editor**. The Body is [WuBuOS](https://github.com/waefrebeorn/WuBuOS), the Brain wubuwizard, the Compiler WuBuNOS.
+
 ## Philosophy
 
 See [`docs/PHILOSOPHY.md`](docs/PHILOSOPHY.md) for the WuBuOffice / WuBuPad /
